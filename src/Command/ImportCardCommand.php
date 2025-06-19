@@ -43,58 +43,77 @@ class ImportCardCommand extends Command
         ini_set('memory_limit', '2G');
         $io = new SymfonyStyle($input, $output);
         $filepath = __DIR__ . '/../../data/cards.csv';
-        $handle = fopen($filepath, 'r');
 
+        $this->logger->info('Début de l\'import des cartes', ['file' => $filepath]);
         $start = microtime(true);
 
-        $this->logger->info('Importing cards from ' . $filepath);
-        if ($handle === false) {
-            $io->error('File not found');
+        try {
+            $handle = fopen($filepath, 'r');
+            $this->logger->info('Importing cards from ' . $filepath);
+
+            if ($handle === false) {
+                $this->logger->error('Fichier non trouvé', ['file' => $filepath]);
+                $io->error('File not found');
+                return Command::FAILURE;
+            }
+
+            $i = 0;
+            $this->csvHeader = fgetcsv($handle);
+            $uuidInDatabase = $this->entityManager->getRepository(Card::class)->getAllUuids();
+
+            $progressIndicator = new ProgressIndicator($output);
+            $progressIndicator->start('Importing cards...');
+
+            $limit = $input->getOption('limit');
+            if ($limit !== null) {
+                $limit = (int)$limit;
+            }
+
+            while (($row = $this->readCSV($handle)) !== false) {
+                $i++;
+
+                if (!in_array($row['uuid'], $uuidInDatabase)) {
+                    $this->addCard($row);
+                }
+
+                if ($i % 2000 === 0) {
+                    $this->entityManager->flush();
+                    $this->entityManager->clear();
+                    $progressIndicator->advance();
+                }
+
+                // Arrête la boucle si la limite est atteinte
+                if ($limit !== null && $i >= $limit) {
+                    break;
+                }
+            }
+            // Toujours flush en sortie de boucle
+            $this->entityManager->flush();
+            $progressIndicator->finish('Importing cards done.');
+
+            fclose($handle);
+
+            $end = microtime(true);
+            $timeElapsed = $end - $start;
+
+            $this->logger->info('Fin de l\'import des cartes', [
+                'file' => $filepath,
+                'cartes_importées' => $i,
+                'durée' => round($timeElapsed, 2) . 's'
+            ]);
+
+            $io->success(sprintf('Imported %d cards in %.2f seconds', $i, $timeElapsed));
+            return Command::SUCCESS;
+        } catch (\Throwable $e) {
+            $this->logger->error('Erreur lors de l\'import', [
+                'exception' => $e,
+                'file' => $filepath
+            ]);
+            $io->error('Erreur lors de l\'import : ' . $e->getMessage());
             return Command::FAILURE;
         }
-
-        $i = 0;
-        $this->csvHeader = fgetcsv($handle);
-        $uuidInDatabase = $this->entityManager->getRepository(Card::class)->getAllUuids();
-
-        $progressIndicator = new ProgressIndicator($output);
-        $progressIndicator->start('Importing cards...');
-
-        $limit = $input->getOption('limit');
-        if ($limit !== null) {
-            $limit = (int)$limit;
-        }
-
-        while (($row = $this->readCSV($handle)) !== false) {
-            $i++;
-    
-            if (!in_array($row['uuid'], $uuidInDatabase)) {
-                $this->addCard($row);
-            }
-    
-            if ($i % 2000 === 0) {
-                $this->entityManager->flush();
-                $this->entityManager->clear();
-                $progressIndicator->advance();
-            }
-    
-            // Arrête la boucle si la limite est atteinte
-            if ($limit !== null && $i >= $limit) {
-                break;
-            }
-        }
-        // Toujours flush en sorti de boucle
-        $this->entityManager->flush();
-        $progressIndicator->finish('Importing cards done.');
-
-        fclose($handle);
-
-        // On récupère le temps actuel, et on calcule la différence avec le temps de départ
-        $end = microtime(true);
-        $timeElapsed = $end - $start;
-        $io->success(sprintf('Imported %d cards in %.2f seconds', $i, $timeElapsed));
-        return Command::SUCCESS;
     }
+
 
     private function readCSV(mixed $handle): array|false
     {
