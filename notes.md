@@ -9,6 +9,12 @@ a. J'ai ajouté un listener de log en php ApiRequestListener.php, puis je l'ai a
 b. Pour l'import, j'ai ajouté des logs dans ImportCardCommand.php pour le début, la fin, la durée et les erreurs de l'import.
 
 ### 2. Ajouter la recherche de carte
-- creation d'une nouvelle route d'API dans ApiCardController qui se limite à 20 résultats : `api/card/search` avec la documentation associée
+- creation d'une nouvelle route d'API dans ApiCardController.php qui se limite à 20 résultats : `api/card/search` avec la documentation associée
 - développement de la page de recherche `SearchPage.vue` en ajoutant la barre de recherche et en affichant les résultat
+
+## 3. Ajouter des filtres
+- j'ai modifié une route d'API qui en plus du nom de la carte, filtre aussi sur son setCode, toujours limité à 20 résultats dans ApiCardController.php : `api/card/search`
+- pour afficher les setCode, j'ai créé une route d'API qui récupère tous les setCode : `api/setcodes` que j'utilise dans SearchPage.vue pour créer le select
+- Modification du front pour intégrer le select et mettre à jour l'URL si besoin
+- exemple : "black lotus" avec le setCode 2ED
 
