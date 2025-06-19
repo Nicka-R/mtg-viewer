@@ -18,3 +18,7 @@ b. Pour l'import, j'ai ajouté des logs dans ImportCardCommand.php pour le débu
 - Modification du front pour intégrer le select et mettre à jour l'URL si besoin
 - exemple : "black lotus" avec le setCode 2ED
 
+### 4. pagination 
+- j'ai modifié la route d'API qui liste toutes les cartes : `api/card/all` dans ApiCardController pour qu'elle prenne en compte les paramètres page et limit (100 cartes par page), elle retourne maintenant des cartes paginées et le nombre total de page 
+
+- J'ai adapté la vue pour ajouter les boutons de navigation 
