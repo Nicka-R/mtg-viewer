@@ -16,3 +16,5 @@ b. Pour l'import, j'ai ajouté des logs dans ImportCardCommand.php pour le débu
 - j'ai modifié une route d'API qui en plus du nom de la carte, filtre aussi sur son setCode, toujours limité à 20 résultats dans ApiCardController.php : `api/card/search`
 - pour afficher les setCode, j'ai créé une route d'API qui récupère tous les setCode : `api/setcodes` que j'utilise dans SearchPage.vue pour créer le select
 - Modification du front pour intégrer le select et mettre à jour l'URL si besoin
+- exemple : "black lotus" avec le setCode 2ED
+
