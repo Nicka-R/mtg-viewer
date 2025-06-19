@@ -1,32 +1,38 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 
 const search = ref('')
 const cards = ref([])
 const loadingCards = ref(false)
-let debounceTimeout = null
-let lastQuery = ''
+const setCodes = ref([])
+const selectedSetCode = ref('')
 
-//délai pour éviter les requêtes trop fréquentes
-const DEBOUNCE_DELAY = 500
-watch(search, (newVal) => {
+let debounceTimeout = null
+
+onMounted(async () => {
+    // charge les setCodes au montage
+    const res = await fetch('/api/card/setcodes')
+    setCodes.value = await res.json()
+})
+
+watch([search, selectedSetCode], ([newVal, newSetCode]) => {
     if (debounceTimeout) clearTimeout(debounceTimeout)
     if (newVal.length >= 3) {
         debounceTimeout = setTimeout(async () => {
             loadingCards.value = true
-            lastQuery = newVal
+            let url = `/api/card/search?q=${encodeURIComponent(newVal)}`
+            if (newSetCode) url += `&setCode=${encodeURIComponent(newSetCode)}`
             try {
-                const res = await fetch(`/api/card/search?q=${encodeURIComponent(newVal)}`)
+                const res = await fetch(url)
                 if (!res.ok) throw new Error('Erreur lors de la recherche')
-                // Ignore si la valeur a changé depuis le début de la requête
-                if (search.value === newVal) {
+                if (search.value === newVal && selectedSetCode.value === newSetCode) {
                     cards.value = await res.json()
                 }
             } catch (e) {
                 cards.value = []
             }
             loadingCards.value = false
-        }, DEBOUNCE_DELAY)
+        }, 300)
     } else {
         cards.value = []
     }
@@ -37,6 +43,10 @@ watch(search, (newVal) => {
     <div>
         <h1>Rechercher une Carte</h1>
         <input v-model="search" placeholder="Nom de la carte..." />
+        <select v-model="selectedSetCode">
+            <option value="">Tous les sets</option>
+            <option v-for="code in setCodes" :key="code" :value="code">{{ code }}</option>
+        </select>
     </div>
     <div class="card-list">
         <div v-if="loadingCards">Loading...</div>

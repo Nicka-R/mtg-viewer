@@ -33,24 +33,47 @@ class ApiCardController extends AbstractController
 
     #[Route('/search', name: 'Search cards', methods: ['GET'])]
     #[OA\Parameter(name: 'q', description: 'Search query', in: 'query', required: true, schema: new OA\Schema(type: 'string'))]
-    #[OA\Put(description: 'Search cards by name')]
-    #[OA\Response(response: 200, description: 'Search results')]
-    public function cardSearch(Request $request): Response
+    #[OA\Parameter(name: 'setCode', description: 'Filtre par setCode', in: 'query', required: false, schema: new OA\Schema(type: 'string'))]
+    #[OA\Get(description: 'Recherche de cartes par nom et setCode')]
+    #[OA\Response(response: 200, description: 'Résultats de la recherche')]
+    public function cardSearch(Request $request, EntityManagerInterface $em): Response
     {
         $q = $request->query->get('q', '');
+        $setCode = $request->query->get('setCode', null);
+
         if (strlen($q) < 3) {
             return $this->json([], 200);
         }
 
-        $cards = $this->entityManager->getRepository(Card::class)
+        $qb = $em->getRepository(Card::class)
             ->createQueryBuilder('c')
             ->where('LOWER(c.name) LIKE :q')
             ->setParameter('q', '%' . strtolower($q) . '%')
-            ->setMaxResults(20)
-            ->getQuery()
-            ->getResult();
+            ->setMaxResults(20);
+
+        if ($setCode) {
+            $qb->andWhere('c.setCode = :setCode')
+            ->setParameter('setCode', $setCode);
+        }
+
+        $cards = $qb->getQuery()->getResult();
 
         return $this->json($cards);
+    }
+
+    #[Route('/setcodes', name: 'List set codes', methods: ['GET'])]
+    #[OA\Get(description: 'Liste tous les setCode disponibles')]
+    #[OA\Response(response: 200, description: 'Liste des setCode')]
+    public function listSetCodes(EntityManagerInterface $em): Response
+    {
+        $setCodes = $em->getRepository(Card::class)
+            ->createQueryBuilder('c')
+            ->select('DISTINCT c.setCode')
+            ->orderBy('c.setCode', 'ASC')
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        return $this->json($setCodes);
     }
 
     #[Route('/{uuid}', name: 'Show card', methods: ['GET'])]
