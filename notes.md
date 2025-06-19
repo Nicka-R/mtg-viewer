@@ -6,3 +6,4 @@ docker compose run --rm php php bin/console import:card --limit=10000
 
 ### 1. Ajout des logs
 a. J'ai ajouté un listener de log en php ApiRequestListener.php, puis je l'ai ajouté au service.yaml. Les logs sont stockés dans le dossier var/logs/app.dev.log
+b. Pour l'import, j'ai ajouté des logs dans ImportCardCommand.php pour le début, la fin, la durée et les erreurs de l'import.
