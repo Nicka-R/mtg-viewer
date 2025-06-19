@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Request;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -27,6 +28,28 @@ class ApiCardController extends AbstractController
     {
         ini_set('memory_limit', '2G');
         $cards = $this->entityManager->getRepository(Card::class)->findAll();
+        return $this->json($cards);
+    }
+
+    #[Route('/search', name: 'Search cards', methods: ['GET'])]
+    #[OA\Parameter(name: 'q', description: 'Search query', in: 'query', required: true, schema: new OA\Schema(type: 'string'))]
+    #[OA\Put(description: 'Search cards by name')]
+    #[OA\Response(response: 200, description: 'Search results')]
+    public function cardSearch(Request $request): Response
+    {
+        $q = $request->query->get('q', '');
+        if (strlen($q) < 3) {
+            return $this->json([], 200);
+        }
+
+        $cards = $this->entityManager->getRepository(Card::class)
+            ->createQueryBuilder('c')
+            ->where('LOWER(c.name) LIKE :q')
+            ->setParameter('q', '%' . strtolower($q) . '%')
+            ->setMaxResults(20)
+            ->getQuery()
+            ->getResult();
+
         return $this->json($cards);
     }
 
