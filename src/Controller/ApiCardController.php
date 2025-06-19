@@ -22,13 +22,37 @@ class ApiCardController extends AbstractController
     ) {
     }
     #[Route('/all', name: 'List all cards', methods: ['GET'])]
-    #[OA\Put(description: 'Return all cards in the database')]
-    #[OA\Response(response: 200, description: 'List all cards')]
-    public function cardAll(): Response
+    #[OA\Parameter(name: 'page', description: 'Numéro de page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 1))]
+    #[OA\Parameter(name: 'limit', description: 'Nombre de cartes par page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 100))]
+    #[OA\Get(description: 'Retourne toutes les cartes paginées')]
+    #[OA\Response(response: 200, description: 'Liste paginée des cartes')]
+    public function cardAll(Request $request, EntityManagerInterface $em): Response
     {
-        ini_set('memory_limit', '2G');
-        $cards = $this->entityManager->getRepository(Card::class)->findAll();
-        return $this->json($cards);
+        ini_set('memory_limit', '512M');
+        $page = max(1, (int)$request->query->get('page', 1));
+        $limit = max(1, (int)$request->query->get('limit', 100));
+        $offset = ($page - 1) * $limit;
+
+        $repo = $em->getRepository(Card::class);
+        $qb = $repo->createQueryBuilder('c')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit);
+
+        $cards = $qb->getQuery()->getResult();
+
+        // Pour retourner le nombre total de cartes (utile pour le front)
+        $total = $repo->createQueryBuilder('c')
+            ->select('COUNT(c.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $this->json([
+            'data' => $cards,
+            'page' => $page,
+            'limit' => $limit,
+            'total' => (int)$total,
+            'pages' => ceil($total / $limit),
+        ]);
     }
 
     #[Route('/search', name: 'Search cards', methods: ['GET'])]
