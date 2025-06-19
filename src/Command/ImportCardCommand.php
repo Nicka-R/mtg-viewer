@@ -31,15 +31,20 @@ class ImportCardCommand extends Command
         parent::__construct();
     }
 
+    protected function configure(): void
+    {
+        $this
+            ->setDescription('Importe les cartes depuis le CSV')
+            ->addOption('limit', null, InputOption::VALUE_OPTIONAL, 'Nombre maximum de cartes à importer', null);
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         ini_set('memory_limit', '2G');
-        // On récupère le temps actuel
         $io = new SymfonyStyle($input, $output);
         $filepath = __DIR__ . '/../../data/cards.csv';
         $handle = fopen($filepath, 'r');
 
-        // On récupère le temps actuel
         $start = microtime(true);
 
         $this->logger->info('Importing cards from ' . $filepath);
@@ -55,17 +60,27 @@ class ImportCardCommand extends Command
         $progressIndicator = new ProgressIndicator($output);
         $progressIndicator->start('Importing cards...');
 
+        $limit = $input->getOption('limit');
+        if ($limit !== null) {
+            $limit = (int)$limit;
+        }
+
         while (($row = $this->readCSV($handle)) !== false) {
             $i++;
-
+    
             if (!in_array($row['uuid'], $uuidInDatabase)) {
                 $this->addCard($row);
             }
-
+    
             if ($i % 2000 === 0) {
                 $this->entityManager->flush();
                 $this->entityManager->clear();
                 $progressIndicator->advance();
+            }
+    
+            // Arrête la boucle si la limite est atteinte
+            if ($limit !== null && $i >= $limit) {
+                break;
             }
         }
         // Toujours flush en sorti de boucle
